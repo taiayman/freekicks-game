@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Freekicks Shooter - Draw Your Own Path</title>
+    <meta charset="UTF-8" />
+    <link
+      rel="icon"
+      href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNgYGD4z0AEYBxVgIEqCJAABbgABEZrpnDAAAAAElFTkSuQmCC"
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+      }
+      #game-ui {
+        position: absolute;
+        width: 100%;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        box-sizing: border-box;
+        font-family: 'Montserrat', sans-serif;
+      }
+      #score-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #ball-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+      }
+      #score-text {
+        color: white;
+        font-size: 32px;
+        font-weight: 800;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        margin-left: 5px;
+        transition: transform 0.2s ease-out;
+      }
+      #timer {
+        color: white;
+        font-size: 28px;
+        font-weight: 800;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.3);
+        padding: 8px 20px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #timer::before {
+        content: "⏱";
+        font-size: 24px;
+        margin-right: 5px;
+      }
+      #target-container {
+        position: absolute;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-size: 20px;
+        font-weight: 600;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.3);
+        padding: 8px 15px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #target-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+        filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+      }
+
+      .finger-trail {
+        position: absolute;
+        pointer-events: none;
+        width: 16px;
+        height: 16px;
+        background: radial-gradient(
+          circle,
+          rgba(255,255,255,1) 0%,
+          rgba(255,255,255,0.8) 30%,
+          rgba(255,255,255,0.4) 60%,
+          rgba(255,255,255,0) 100%
+        );
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+        animation: fadeOut 0.5s ease-out forwards;
+        box-shadow: 0 0 10px rgba(255,255,255,0.5);
+      }
+
+      /* 
+        Reduced the background overlay from rgba(0, 0, 0, 0.7) to rgba(0, 0, 0, 0.3)
+        so the scene is more visible.
+      */
+      #tutorial-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 1500;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+      }
+
+      /* 
+        Using a PNG image for the hand. 
+        (This is just an example URL—replace with your preferred finger/hand image.)
+      */
+      #tutorial-hand {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        background: url("data:image/svg+xml,%3Csvg width='800px' height='800px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' stroke='%23ffffff'%3E%3Cg id='SVGRepo_iconCarrier'%3E%3Cpath d='M17.1668 11.1733C17.1668 12.5307 17.1668 9.81592 17.1668 11.1733ZM17.1668 11.1733C17.1668 12.5307 17.1668 13.8881 17.1668 13.8881M17.1668 11.1733C17.1668 9.81592 20.0001 9.81592 20.0001 11.1733C20.0001 12.5307 20.0001 12.8701 20.0001 18.2997C20.0001 23.7294 7.85591 23.7756 5.68023 18.2997C4.87315 16.2684 5.01308 16.7027 4.2713 14.941C3.52953 13.1794 5.97114 12.1286 6.9472 13.8881C7.92326 15.6477 8.66677 18.4383 8.66677 17.2817C8.66677 16.125 8.66677 12.5307 8.66677 11.1733C8.66677 9.81592 8.66677 5.37546 8.66677 4.01805C8.66677 2.66065 11.5001 2.66065 11.5001 4.01805M17.1668 11.1733C17.1668 9.81592 14.3239 9.81592 14.3334 11.1733M14.3334 11.1733C14.3334 9.81592 11.5001 9.81592 11.5001 11.1733C11.5001 11.4976 11.5001 3.66565 11.5001 4.01805M14.3334 11.1733C14.3334 11.4976 14.3334 10.8209 14.3334 11.1733ZM14.3334 11.1733C14.3477 13.2094 14.3334 13.8881 14.3334 13.8881M11.5001 13.8881C11.5001 13.8881 11.5001 7.41019 11.5001 4.01805' stroke='%23FFFFFF' stroke-width='1.75' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E")
+        no-repeat center/contain;
+        filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+        animation: tutorialPathAnimation 2.5s infinite;
+        pointer-events: none;
+        transform-origin: center;
+        transform: rotate(-45deg);
+      }
+
+      #tutorial-text {
+        position: absolute;
+        color: white;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 24px;
+        font-weight: 600;
+        text-align: center;
+        top: 35%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        animation: pulseText 2s infinite;
+      }
+
+      @keyframes pulseText {
+        0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.98); }
+        100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
+
+      /* 
+        New keyframe anim that moves the hand from the bottom-center (approx the ball)
+        to the top-center (approx the goal). You can tweak the positions to match
+        your actual scene coordinates.
+      */
+      @keyframes tutorialPathAnimation {
+        0% {
+          transform: translate(50%, 80%) scale(1);
+          opacity: 0.4;
+        }
+        30% {
+          transform: translate(45%, 60%) scale(1.1);
+          opacity: 1;
+        }
+        60% {
+          transform: translate(55%, 40%) scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(50%, 30%) scale(1);
+          opacity: 0.4;
+        }
+      }
+
+      #game-over-dialog {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        border-radius: 25px;
+        padding: 40px;
+        text-align: center;
+        color: white;
+        font-family: 'Montserrat', sans-serif;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        z-index: 2000;
+        min-width: 320px;
+      }
+
+      #game-over-title {
+        font-size: 38px;
+        font-weight: 800;
+        margin-bottom: 20px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        transform: translateY(-20px);
+        animation: fadeInDown 0.5s ease-out forwards 0.2s;
+      }
+
+      #game-over-title.win {
+        background: linear-gradient(45deg, #ffd700, #ffa500);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      #game-over-title.lose {
+        background: linear-gradient(45deg, #ff4444, #ff6b6b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      #game-over-message {
+        font-size: 22px;
+        margin: 25px 0 35px;
+        opacity: 0;
+        transform: translateY(-10px);
+        animation: fadeInDown 0.5s ease-out forwards 0.4s;
+      }
+
+      #play-again-btn {
+        background: linear-gradient(45deg, #4CAF50, #45a049);
+        border: none;
+        padding: 15px 35px;
+        border-radius: 50px;
+        color: white;
+        font-size: 20px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        opacity: 0;
+        transform: translateY(10px);
+        animation: fadeInUp 0.5s ease-out forwards 0.6s;
+      }
+
+      #play-again-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      }
+
+      #play-again-btn:active {
+        transform: translateY(0);
+      }
+
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+      }
+
+      @keyframes fadeOut {
+        0% { 
+          opacity: 1; 
+          transform: translate(-50%, -50%) scale(1.2);
+        }
+        100% { 
+          opacity: 0; 
+          transform: translate(-50%, -50%) scale(0.2);
+        }
+      }
+
+      @keyframes slideIn {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -40%);
+        }
+        100% {
+          opacity: 1;
+          transform: translate(-50%, -50%);
+        }
+      }
+    </style>
+
+    <script
+      async
+      src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"
+    ></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.153.0/build/three.module.js",
+          "three/examples/jsm/postprocessing/EffectComposer.js": "https://unpkg.com/three@0.153.0/examples/jsm/postprocessing/EffectComposer.js",
+          "three/examples/jsm/postprocessing/RenderPass.js": "https://unpkg.com/three@0.153.0/examples/jsm/postprocessing/RenderPass.js",
+          "three/examples/jsm/postprocessing/UnrealBloomPass.js": "https://unpkg.com/three@0.153.0/examples/jsm/postprocessing/UnrealBloomPass.js",
+          "./models/yellow-character.js": "./models/yellow-character.js",
+          "./models/cute-robot.js": "./models/cute-robot.js"
+        }
+      }
+    </script>
+
+    <!-- Tween.js for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  </head>
+  <body>
+    <div id="game-ui">
+      <div id="score-container">
+        <img id="ball-icon" src="football.jpg" alt="Ball">
+        <span id="score-text">× 0</span>
+      </div>
+      <div id="timer">60</div>
+    </div>
+
+    <!-- Tutorial overlay with reduced opacity and a new hand animation -->
+    <div id="tutorial-overlay">
+      <div id="tutorial-text">Draw a path to shoot!</div>
+      <div id="tutorial-hand"></div>
+    </div>
+
+    <div id="game-over-dialog">
+      <div id="game-over-title">Game Over!</div>
+      <div id="game-over-message"></div>
+      <button id="play-again-btn">Play Again</button>
+    </div>
+
+    <audio id="kickSound" src="kick.mp3" preload="auto"></audio>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+      import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+      import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+      import { createYellowCharacter } from './models/yellow-character.js';
+      import { createCuteRobot } from './models/cute-robot.js';
+
+      let camera, scene, renderer, composer;
+      let ball, goal;
+      let goalkeeper;
+      let score = 0;
+      let player;
+      let ballAndPlayerGroup;
+
+      // Field dimensions
+      const PITCH_LENGTH = 105;
+      const PITCH_WIDTH = 68;
+
+      // Global clock
+      const clock = new THREE.Clock();
+
+      let timeLeft = 60;
+      let gameActive = false;
+      const GOAL_TARGET = 10;
+
+      function startGame() {
+        gameActive = true;
+        timeLeft = 60;
+        score = 0;
+        updateUI();
+
+        // Remove tutorial overlay after first interaction
+        const tutorialOverlay = document.getElementById('tutorial-overlay');
+        if (tutorialOverlay) {
+          document.addEventListener('pointerdown', function removeTutorial() {
+            tutorialOverlay.style.opacity = '0';
+            setTimeout(() => tutorialOverlay.remove(), 500);
+            document.removeEventListener('pointerdown', removeTutorial);
+          }, { once: true });
+        }
+        
+        // Start the countdown
+        const timerInterval = setInterval(() => {
+          if (!gameActive) {
+            clearInterval(timerInterval);
+            return;
+          }
+          
+          timeLeft--;
+          updateUI();
+          
+          if (timeLeft <= 0) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            endGame();
+          }
+        }, 1000);
+      }
+
+      function updateUI() {
+        document.getElementById('score-text').textContent = `× ${score}`;
+        document.getElementById('timer').textContent = timeLeft;
+      }
+
+      function endGame() {
+        const title = '⏱ Time\'s Up!';
+        const message = `Final Score: ${score} Goals!`;
+        
+        const dialog = document.getElementById('game-over-dialog');
+        const titleEl = document.getElementById('game-over-title');
+        const messageEl = document.getElementById('game-over-message');
+        
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        dialog.style.display = 'block';
+        dialog.style.animation = 'slideIn 0.5s ease-out forwards';
+
+        // Play Again button handler
+        document.getElementById('play-again-btn').onclick = () => {
+          dialog.style.display = 'none';
+          startGame();
+        };
+      }
+
+      // -----------------------
+      // CREATE THE PITCH
+      // -----------------------
+      function createPitch() {
+        const pitchGroup = new THREE.Group();
+
+        // Main grass plane
+        const grassGeometry = new THREE.PlaneGeometry(PITCH_WIDTH, PITCH_LENGTH);
+        const grassTexture = new THREE.TextureLoader().load(
+          'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/terrain/grasslight-big.jpg'
+        );
+        grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+        grassTexture.repeat.set(8, 10);
+        grassTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const grassMaterial = new THREE.MeshStandardMaterial({
+          map: grassTexture,
+          color: 0x4c9c4c,
+          roughness: 0.8,
+          metalness: 0.1
+        });
+
+        const pitch = new THREE.Mesh(grassGeometry, grassMaterial);
+        pitch.rotation.x = -Math.PI / 2;
+        pitch.receiveShadow = true;
+        pitchGroup.add(pitch);
+
+        // White lines material
+        const lineMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 0.4,
+          metalness: 0.2,
+          emissive: 0xffffff,
+          emissiveIntensity: 0.2
+        });
+
+        // Halfway line
+        const LINE_WIDTH = 0.12;
+        const halfwayLineGeom = new THREE.PlaneGeometry(PITCH_WIDTH, LINE_WIDTH);
+        const halfwayLine = new THREE.Mesh(halfwayLineGeom, lineMaterial);
+        halfwayLine.rotation.x = -Math.PI / 2;
+        halfwayLine.position.set(0, 0.01, 0);
+        pitchGroup.add(halfwayLine);
+
+        // Center circle
+        const centerCircleRadius = 9.15;
+        const centerCircleGeometry = new THREE.EdgesGeometry(
+          new THREE.CylinderGeometry(centerCircleRadius, centerCircleRadius, 0.001, 64)
+        );
+        const centerCircle = new THREE.LineSegments(
+          centerCircleGeometry,
+          new THREE.LineBasicMaterial({ color: 0xffffff })
+        );
+        centerCircle.position.set(0, 0.01, 0);
+        pitchGroup.add(centerCircle);
+
+        // Center spot
+        const centerSpotGeom = new THREE.CircleGeometry(0.1, 16);
+        const centerSpot = new THREE.Mesh(centerSpotGeom, lineMaterial);
+        centerSpot.rotation.x = -Math.PI / 2;
+        centerSpot.position.set(0, 0.01, 0);
+        pitchGroup.add(centerSpot);
+
+        return pitchGroup;
+      }
+
+      // -----------------------
+      // CREATE STADIUM
+      // -----------------------
+      function createStadium() {
+        const stadiumGroup = new THREE.Group();
+
+        // Load textures
+        const textureLoader = new THREE.TextureLoader();
+        const wallTexture = textureLoader.load('wall_back.jpeg');
+        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(20, 4);
+
+        // Create curved back wall
+        const wallRadius = PITCH_WIDTH * 1.2;
+        const wallHeight = 25;
+        const wallSegments = 32;
+        const wallGeometry = new THREE.CylinderGeometry(
+          wallRadius, wallRadius, wallHeight,
+          wallSegments, 1, true,
+          -Math.PI * 0.3, Math.PI * 0.6
+        );
+
+        const wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          side: THREE.DoubleSide,
+          roughness: 0.8,
+          metalness: 0.2
+        });
+
+        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall.position.set(0, wallHeight/2, PITCH_LENGTH/2 + 15);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        stadiumGroup.add(wall);
+
+        // Add some stadium lights
+        const lightPositions = [
+          { x: -wallRadius * 0.7, y: wallHeight * 0.8, z: PITCH_LENGTH/2 + 5 },
+          { x: wallRadius * 0.7, y: wallHeight * 0.8, z: PITCH_LENGTH/2 + 5 }
+        ];
+
+        lightPositions.forEach(pos => {
+          // Light fixture
+          const lightGeometry = new THREE.CylinderGeometry(0.5, 1, 2, 8);
+          const lightMaterial = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            emissive: 0xffffff,
+            emissiveIntensity: 0.2
+          });
+          const lightFixture = new THREE.Mesh(lightGeometry, lightMaterial);
+          lightFixture.position.set(pos.x, pos.y, pos.z);
+          lightFixture.rotation.x = Math.PI * 0.25;
+          stadiumGroup.add(lightFixture);
+
+          // Actual light source
+          const spotLight = new THREE.SpotLight(0xffffff, 20);
+          spotLight.position.copy(lightFixture.position);
+          spotLight.target.position.set(pos.x * 0.5, 0, PITCH_LENGTH/2);
+          spotLight.angle = Math.PI * 0.2;
+          spotLight.penumbra = 0.4;
+          spotLight.decay = 1.5;
+          spotLight.distance = 80;
+          spotLight.castShadow = true;
+          stadiumGroup.add(spotLight);
+          stadiumGroup.add(spotLight.target);
+        });
+
+        // Add some crowd silhouettes
+        const crowdGeometry = new THREE.PlaneGeometry(wallRadius * 2, wallHeight * 0.4);
+        const crowdMaterial = new THREE.MeshBasicMaterial({
+          color: 0x222222,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide
+        });
+
+        const crowd = new THREE.Mesh(crowdGeometry, crowdMaterial);
+        crowd.position.set(0, wallHeight * 0.3, PITCH_LENGTH/2 + wallRadius * 0.8);
+        crowd.rotation.y = Math.PI * 0.1;
+        stadiumGroup.add(crowd);
+
+        const crowd2 = crowd.clone();
+        crowd2.position.z = PITCH_LENGTH/2 + wallRadius * 0.8;
+        crowd2.rotation.y = -Math.PI * 0.1;
+        stadiumGroup.add(crowd2);
+
+        return stadiumGroup;
+      }
+
+      // -----------------------
+      // INIT
+      // -----------------------
+      async function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x88ccff);
+
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        );
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.8;
+        document.body.appendChild(renderer.domElement);
+
+        composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+
+        const bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          0.3,
+          0.3,
+          0.7
+        );
+        composer.addPass(bloomPass);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        sunLight.position.set(50, 100, 50);
+        sunLight.castShadow = true;
+        scene.add(sunLight);
+
+        // Pitch
+        const pitch = createPitch();
+        scene.add(pitch);
+
+        // Add stadium
+        const stadium = createStadium();
+        scene.add(stadium);
+
+        // Group for ball + player
+        ballAndPlayerGroup = new THREE.Group();
+        // Position them about 20 meters from goal
+        ballAndPlayerGroup.position.z = PITCH_LENGTH/2 - 20;
+
+        // Set camera position after group is created
+        camera.position.set(0, 2, ballAndPlayerGroup.position.z - 4);
+        camera.lookAt(0, 1, ballAndPlayerGroup.position.z + 4);
+
+        // -----------------------
+        // CREATE BALL
+        // -----------------------
+        const ballGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+        const ballTexture = new THREE.TextureLoader().load('football.jpg');
+        ballTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const ballMaterial = new THREE.MeshStandardMaterial({
+          map: ballTexture,
+          roughness: 0.3,
+          metalness: 0.2,
+          bumpScale: 0.02,
+          transparent: true
+        });
+
+        ball = new THREE.Mesh(ballGeometry, ballMaterial);
+        ball.position.set(0.3, 0.15, 0);
+        ball.castShadow = true;
+        ball.rotation.y = Math.PI;
+        ballAndPlayerGroup.add(ball);
+
+        // CREATE PLAYER
+        player = await createYellowCharacter();
+        player.position.set(-0.3, 0.11, -0.5);
+        player.scale.set(0.4, 0.4, 0.4);
+        player.rotation.y = 0;
+        player.traverse(object => {
+          if (object instanceof THREE.Mesh) {
+            object.castShadow = true;
+          }
+        });
+        ballAndPlayerGroup.add(player);
+
+        scene.add(ballAndPlayerGroup);
+
+        // CREATE GOAL
+        createGoal();
+
+        // CREATE GOALKEEPER
+        goalkeeper = await createCuteRobot();
+        goalkeeper.scale.set(0.6, 0.6, 0.6);
+        goalkeeper.position.set(0, 0, PITCH_LENGTH / 2 - 1);
+        goalkeeper.rotation.y = Math.PI;
+        goalkeeper.traverse(object => {
+          if (object instanceof THREE.Mesh) {
+            object.castShadow = true;
+            object.receiveShadow = true;
+          }
+        });
+
+        // Small idle bounce
+        new TWEEN.Tween(goalkeeper.position)
+          .to({ y: goalkeeper.position.y + 0.1 }, 1000)
+          .repeat(Infinity)
+          .yoyo(true)
+          .easing(TWEEN.Easing.Sinusoidal.InOut)
+          .start();
+
+        scene.add(goalkeeper);
+
+        // -----------------------
+        // LISTENERS FOR DRAWING
+        // -----------------------
+        window.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+
+        // Touch events
+        window.addEventListener('touchstart', e => onPointerDown(e.touches[0]));
+        window.addEventListener('touchmove', e => onPointerMove(e.touches[0]));
+        window.addEventListener('touchend', onPointerUp);
+
+        window.addEventListener('resize', onWindowResize);
+
+        // Add spin/physics data to ball
+        ball.userData.velocity = new THREE.Vector3(0, 0, 0);
+        ball.userData.acceleration = new THREE.Vector3(0, 0, 0);
+        ball.userData.angularVelocity = new THREE.Vector3(0, 0, 0);
+        ball.userData.spin = new THREE.Vector3(0, 0, 0);
+        ball.userData.isMoving = false;
+        ball.userData.friction = 0.98;
+        ball.userData.restitution = 0.7;
+        ball.userData.gravity = -9.8;
+        ball.userData.dragCoefficient = 0.15;  // Air resistance
+        ball.userData.magnusForce = 0.5;       // Spin effect strength
+
+        // Shot analysis properties
+        ball.userData.shotType = 'straight';
+
+        // Goalkeeper properties
+        goalkeeper.userData = {
+          initialPosition: goalkeeper.position.clone(),
+          moveSpeed: 20,
+          jumpHeight: 2.5,
+          reactionTime: 0.12,
+          saveStarted: false,
+          isRecovering: false,
+          restitution: 0.85,
+          saveRadius: 1.2,
+          predictiveTracking: true,
+          reactionDelayActive: false,
+          reactionDelayTimer: 0,
+          reactionDelayBase: 0.3,
+          reactionDelayRandom: 0.2,
+          idleAnimations: []
+        };
+      }
+
+      // -----------------------
+      // CREATE GOAL
+      // -----------------------
+      function createGoal() {
+        const goalGroup = new THREE.Group();
+
+        const postMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 0.2,
+          metalness: 0.8,
+          emissive: 0xffffff,
+          emissiveIntensity: 0.3
+        });
+
+        const postHeight = 2.44 * 1.5;
+        const goalWidth = 7.32 * 1.5;
+        const postRadius = 0.08;
+        const netDepth = 2.5;
+
+        // Posts
+        const postGeometry = new THREE.CylinderGeometry(postRadius, postRadius, postHeight, 16);
+        const leftPost = new THREE.Mesh(postGeometry, postMaterial);
+        leftPost.position.set(-goalWidth / 2, postHeight / 2, PITCH_LENGTH / 2);
+        leftPost.castShadow = true;
+
+        const rightPost = new THREE.Mesh(postGeometry, postMaterial);
+        rightPost.position.set(goalWidth / 2, postHeight / 2, PITCH_LENGTH / 2);
+        rightPost.castShadow = true;
+
+        // Crossbar
+        const crossbarGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 16);
+        crossbarGeometry.rotateZ(Math.PI / 2);
+        const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
+        crossbar.position.set(0, postHeight, PITCH_LENGTH / 2);
+        crossbar.castShadow = true;
+
+        // Simple net (wireframe)
+        const netMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.4,
+          wireframe: true
+        });
+
+        const netSegments = 25;
+        const sideNetGeometry = new THREE.PlaneGeometry(netDepth, postHeight, 8, netSegments);
+
+        const leftNet = new THREE.Mesh(sideNetGeometry, netMaterial);
+        leftNet.position.set(
+          -goalWidth / 2,
+          postHeight / 2,
+          PITCH_LENGTH / 2 + netDepth / 2
+        );
+        leftNet.rotation.y = Math.PI / 2;
+
+        const rightNet = new THREE.Mesh(sideNetGeometry, netMaterial);
+        rightNet.position.set(goalWidth / 2, postHeight / 2, PITCH_LENGTH / 2 + netDepth / 2);
+        rightNet.rotation.y = Math.PI / 2;
+
+        const topNetGeometry = new THREE.PlaneGeometry(goalWidth, netDepth, netSegments, 8);
+        const topNet = new THREE.Mesh(topNetGeometry, netMaterial);
+        topNet.position.set(0, postHeight, PITCH_LENGTH / 2 + netDepth / 2);
+        topNet.rotation.x = Math.PI / 2;
+
+        const backNetGeometry = new THREE.PlaneGeometry(goalWidth, postHeight, netSegments, netSegments);
+        const backNet = new THREE.Mesh(backNetGeometry, netMaterial);
+        backNet.position.set(0, postHeight / 2, PITCH_LENGTH / 2 + netDepth);
+
+        goalGroup.add(leftPost, rightPost, crossbar, leftNet, rightNet, topNet, backNet);
+
+        // Goal lights
+        const goalLight = new THREE.PointLight(0xffffff, 0.8, 12);
+        goalLight.position.set(0, postHeight / 2, PITCH_LENGTH / 2);
+        goalGroup.add(goalLight);
+
+        const goalAmbient = new THREE.PointLight(0xffffff, 0.3, 15);
+        goalAmbient.position.set(0, postHeight * 0.7, PITCH_LENGTH / 2 - 2);
+        goalGroup.add(goalAmbient);
+
+        // *** STORE REFS TO NET MESHES IN userData ***
+        goalGroup.userData = {
+          netMeshes: {
+            leftNet,
+            rightNet,
+            topNet,
+            backNet,
+          }
+        };
+
+        scene.add(goalGroup);
+        goal = goalGroup;
+      }
+
+      // -----------------------
+      // DRAWING THE PATH
+      // -----------------------
+      let isDrawing = false;
+      let shotPath = [];
+      let pathLine;
+      let trajectoryLine;
+      let drawnPathLine;
+      let isDraggingBall = false;
+
+      function onPointerDown(event) {
+        // Only allow drawing when ball is not moving
+        if (ball.userData.isMoving) return;
+
+        // Check if user clicked the ball (or close to it)
+        if (isOverBall(event)) {
+          isDrawing = true;
+          isDraggingBall = true;
+          shotPath = [];
+
+          // Clean up any existing lines from previous shots
+          if (drawnPathLine) scene.remove(drawnPathLine);
+          if (trajectoryLine) scene.remove(trajectoryLine);
+
+          // Create the drawn path line (green)
+          const drawnPathMaterial = new THREE.LineBasicMaterial({
+            color: 0x00ff00,
+            linewidth: 3,
+            opacity: 0.8,
+            transparent: true
+          });
+          const geometry = new THREE.BufferGeometry();
+          drawnPathLine = new THREE.Line(geometry, drawnPathMaterial);
+          drawnPathLine.position.y = 0.05;
+          scene.add(drawnPathLine);
+
+          // Create the trajectory preview line (white, dashed)
+          const trajectoryMaterial = new THREE.LineDashedMaterial({
+            color: 0xffffff,
+            dashSize: 0.3,
+            gapSize: 0.1,
+            opacity: 0.6,
+            transparent: true
+          });
+          trajectoryLine = new THREE.Line(new THREE.BufferGeometry(), trajectoryMaterial);
+          scene.add(trajectoryLine);
+
+          addPathPoint(event);
+        }
+      }
+
+      function onPointerMove(event) {
+        if (!isDrawing || !isDraggingBall) return;
+        addPathPoint(event);
+        updatePathLines();
+        
+        // Add finger trail effect
+        const trail = document.createElement('div');
+        trail.className = 'finger-trail';
+        trail.style.left = event.clientX + 'px';
+        trail.style.top = event.clientY + 'px';
+        document.body.appendChild(trail);
+        
+        // Remove the trail element after animation
+        setTimeout(() => {
+          trail.remove();
+        }, 500);
+      }
+
+      function onPointerUp() {
+        if (!isDrawing || !isDraggingBall) return;
+        isDrawing = false;
+        isDraggingBall = false;
+
+        // If we have at least 2 points in the path, start the shot sequence
+        if (shotPath.length >= 2) {
+          // Animate the player approach + kick BEFORE shooting
+          playerKickAnimation(() => {
+            // Once kick animation is done, shoot the ball
+            shootBallWithPhysics();
+          });
+        }
+
+        // Clean up the path lines after a delay
+        setTimeout(() => {
+          if (drawnPathLine) {
+            scene.remove(drawnPathLine);
+            drawnPathLine = null;
+          }
+          if (trajectoryLine) {
+            scene.remove(trajectoryLine);
+            trajectoryLine = null;
+          }
+        }, 1000);
+      }
+
+      // Check if pointer is over the ball
+      function isOverBall(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+
+        const intersects = raycaster.intersectObject(ball, true);
+        return intersects.length > 0;
+      }
+
+      // Convert screen coords to 3D coords on the ground
+      function addPathPoint(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(groundPlane, intersectPoint);
+
+        shotPath.push(intersectPoint);
+      }
+
+      function updatePathLines() {
+        if (!drawnPathLine || shotPath.length < 2) return;
+
+        // Update the drawn path line
+        const groundPoints = shotPath.map(p => new THREE.Vector3(p.x, 0.05, p.z));
+        drawnPathLine.geometry.setFromPoints(groundPoints);
+
+        // Calculate and show trajectory preview
+        const start = shotPath[0];
+        const end = shotPath[shotPath.length - 1];
+        const direction = end.clone().sub(start).normalize();
+        const distance = end.distanceTo(start);
+        const power = Math.min(distance * 4.0, 20);
+
+        const trajectoryPoints = [];
+        const initialVelocity = new THREE.Vector3(
+          direction.x * power,
+          power * 0.8,
+          direction.z * power
+        );
+
+        let pos = ball.position.clone();
+        let vel = initialVelocity.clone();
+        const timeStep = 1/30;
+        const gravity = -9.8;
+
+        for (let i = 0; i < 30; i++) {
+          trajectoryPoints.push(pos.clone());
+          pos.add(vel.clone().multiplyScalar(timeStep));
+          vel.y += gravity * timeStep;
+
+          if (pos.y < 0.15) {
+            pos.y = 0.15;
+            trajectoryPoints.push(pos.clone());
+            break;
+          }
+        }
+
+        trajectoryLine.geometry.setFromPoints(trajectoryPoints);
+        trajectoryLine.computeLineDistances();
+      }
+
+      // ------------------------------
+      // NEW: PLAYER KICK ANIMATION
+      // ------------------------------
+      function playerKickAnimation(onComplete) {
+        // 1) Approach the ball’s position
+        const approachTween = new TWEEN.Tween(player.position)
+          .to({ x: -0.05, z: -0.1 }, 500)  // Slightly behind the ball
+          .easing(TWEEN.Easing.Quadratic.InOut);
+
+        // 2) Kick animation: tilt the player forward and back
+        const kickTween = new TWEEN.Tween(player.rotation)
+          .to({ x: -0.5 }, 200)  // tilt forward
+          .yoyo(true)
+          .repeat(1) // forward & back
+          .onComplete(() => {
+            if (onComplete) onComplete();
+          });
+
+        // Chain them in sequence
+        approachTween.chain(kickTween);
+        approachTween.start();
+      }
+
+      function calculatePathCurvature(points, index) {
+        if (points.length < 3 || index < 1 || index >= points.length - 1) return 0;
+        
+        const prev = points[index - 1];
+        const curr = points[index];
+        const next = points[index + 1];
+        
+        const v1 = new THREE.Vector3().subVectors(curr, prev);
+        const v2 = new THREE.Vector3().subVectors(next, curr);
+
+        const angle = v1.angleTo(v2);
+        const cross = new THREE.Vector3().crossVectors(v1, v2);
+        const direction = Math.sign(cross.y);
+        
+        return angle * direction;
+      }
+
+      function analyzeShotPath(path) {
+        if (path.length < 3) return 'straight';
+        
+        let totalCurvature = 0;
+        let maxCurvature = 0;
+        
+        for (let i = 1; i < path.length - 1; i++) {
+          const curvature = Math.abs(calculatePathCurvature(path, i));
+          totalCurvature += curvature;
+          maxCurvature = Math.max(maxCurvature, curvature);
+        }
+        
+        const avgCurvature = totalCurvature / (path.length - 2);
+
+        if (maxCurvature > 0.5) {
+          return 'curve';
+        } else if (avgCurvature > 0.2) {
+          return 'bend';
+        } else {
+          return 'straight';
+        }
+      }
+
+      function calculateTargetPoint(path) {
+        const endPoints = path.slice(-3);
+        const targetPoint = new THREE.Vector3();
+        
+        endPoints.forEach(point => {
+          targetPoint.add(point);
+        });
+        
+        targetPoint.divideScalar(endPoints.length);
+
+        // Adjust target based on shot type and path quality
+        const pathQuality = calculatePathQuality(path);
+        const assistMultiplier = 1 + (1 - pathQuality) * 2; // More assist for worse shots
+        
+        if (ball.userData.shotType === 'curve') {
+          targetPoint.y = 1.5 * assistMultiplier;
+          targetPoint.x *= 0.8; // Favor curving towards center
+        } else {
+          targetPoint.y = 1.0 * assistMultiplier;
+        }
+        
+        // Keep target within goal bounds
+        targetPoint.x = THREE.MathUtils.clamp(targetPoint.x, -3.5, 3.5);
+        targetPoint.z = PITCH_LENGTH/2 - 1; // Just in front of goal line
+        
+        return targetPoint;
+      }
+
+      function calculatePathQuality(path) {
+        if (path.length < 3) return 1;
+        
+        // Calculate path smoothness
+        let totalAngle = 0;
+        for (let i = 1; i < path.length - 1; i++) {
+          const prev = path[i-1];
+          const curr = path[i];
+          const next = path[i+1];
+          
+          const v1 = new THREE.Vector3().subVectors(curr, prev);
+          const v2 = new THREE.Vector3().subVectors(next, curr);
+          totalAngle += v1.angleTo(v2);
+        }
+        const avgAngle = totalAngle / (path.length - 2);
+        
+        // Calculate path direction consistency
+        const startDir = new THREE.Vector3().subVectors(path[1], path[0]);
+        const endDir = new THREE.Vector3().subVectors(path[path.length-1], path[path.length-2]);
+        const dirConsistency = 1 - startDir.angleTo(endDir) / Math.PI;
+        
+        // Combine factors
+        const smoothnessFactor = Math.max(0, 1 - avgAngle / (Math.PI/4));
+        const consistencyFactor = Math.max(0, dirConsistency);
+        
+        return (smoothnessFactor * 0.6 + consistencyFactor * 0.4);
+      }
+
+      function shootBallWithPhysics() {
+        if (shotPath.length < 2) return;
+
+        // Play kick sound
+        const kickSound = document.getElementById('kickSound');
+        kickSound.currentTime = 0; // Reset the audio to start
+        kickSound.play().catch(error => {
+          // Handle any autoplay restrictions silently
+          console.log("Audio play failed:", error);
+        });
+
+        const start = shotPath[0];
+        const end = shotPath[shotPath.length - 1];
+        const direction = end.clone().sub(start).normalize();
+        const distance = end.distanceTo(start);
+
+        // Prevent backwards shots
+        if (direction.z < 0) {
+          direction.z = Math.abs(direction.z);
+        }
+
+        const maxPower = 15;
+        const power = Math.min(distance * 4.0, maxPower);
+
+        let totalCurvature = 0;
+        for (let i = 1; i < shotPath.length - 1; i++) {
+          totalCurvature += calculatePathCurvature(shotPath, i);
+        }
+        const avgCurvature = totalCurvature / (shotPath.length - 2);
+
+        let verticalMultiplier = 0.6;
+        if (ball.userData.shotType === 'curve') {
+          verticalMultiplier = 0.8;
+        }
+
+        const initialVelocity = new THREE.Vector3(
+          direction.x * power,
+          power * verticalMultiplier,
+          direction.z * power
+        );
+
+        if (initialVelocity.z < 2) {
+          initialVelocity.z = 2;
+        }
+
+        const maxVerticalVel = 8;
+        if (initialVelocity.y > maxVerticalVel) {
+          initialVelocity.y = maxVerticalVel;
+        }
+
+        ball.userData.velocity.copy(initialVelocity);
+
+        let spinMultiplier = 8;
+        if (ball.userData.shotType === 'curve') {
+          spinMultiplier = 12;
+        }
+
+        const maxSpin = 5;
+        const spinStrength = Math.min(Math.abs(avgCurvature) * spinMultiplier, maxSpin);
+
+        // Cross for spin direction
+        ball.userData.spin.set(
+          -direction.z * spinStrength,
+          0,
+          direction.x * spinStrength
+        );
+
+        // Reaction delay
+        goalkeeper.userData.reactionDelayActive = true;
+        goalkeeper.userData.reactionDelayTimer = 
+          goalkeeper.userData.reactionDelayBase + 
+          Math.random() * goalkeeper.userData.reactionDelayRandom;
+
+        ball.userData.isMoving = true;
+        addBallTrail();
+      }
+
+      // Ball trail effect
+      function addBallTrail() {
+        const trailMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.3
+        });
+
+        const trailGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+        trail.position.copy(ball.position);
+        scene.add(trail);
+
+        new TWEEN.Tween(trail.material)
+          .to({ opacity: 0 }, 1000)
+          .onComplete(() => {
+            scene.remove(trail);
+          })
+          .start();
+
+        new TWEEN.Tween(trail.scale)
+          .to({ x: 0.1, y: 0.1, z: 0.1 }, 1000)
+          .start();
+      }
+
+      // -----------------------
+      // WINDOW RESIZE
+      // -----------------------
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      // -----------------------
+      // ANIMATE LOOP
+      // -----------------------
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+        TWEEN.update();
+
+        // Camera follows ball/player group
+        const cameraOffset = new THREE.Vector3(0, 1.5, -2);
+        const cameraTarget = new THREE.Vector3(0, 0.5, 2);
+        camera.position.copy(cameraOffset).add(ballAndPlayerGroup.position);
+        camera.lookAt(cameraTarget.add(ballAndPlayerGroup.position));
+
+        // Physics
+        if (ball.userData.isMoving) {
+          // Gravity
+          ball.userData.velocity.y += ball.userData.gravity * delta;
+
+          // Magnus force for spin
+          if (ball.userData.spin.length() > 0) {
+            const velocity = ball.userData.velocity.clone();
+            const spin = ball.userData.spin.clone();
+            const magnusForce = new THREE.Vector3().crossVectors(spin, velocity);
+            magnusForce.multiplyScalar(ball.userData.magnusForce * delta);
+            ball.userData.velocity.add(magnusForce);
+            ball.userData.spin.multiplyScalar(0.99);
+          }
+
+          // Air resistance
+          const drag = ball.userData.velocity.clone();
+          drag.multiplyScalar(-ball.userData.dragCoefficient * delta);
+          ball.userData.velocity.add(drag);
+
+          // Update position
+          ball.position.addScaledVector(ball.userData.velocity, delta);
+
+          // Update ball rotation
+          ball.rotation.x += ball.userData.spin.x * delta;
+          ball.rotation.y += ball.userData.spin.y * delta;
+          ball.rotation.z += ball.userData.spin.z * delta;
+
+          // Ground bounce
+          if (ball.position.y < 0.15) {
+            ball.position.y = 0.15;
+            ball.userData.velocity.y = -ball.userData.velocity.y * ball.userData.restitution;
+
+            // Friction
+            ball.userData.velocity.x *= ball.userData.friction;
+            ball.userData.velocity.z *= ball.userData.friction;
+            ball.userData.spin.multiplyScalar(0.8);
+
+            // Stop if too slow
+            if (
+              Math.abs(ball.userData.velocity.y) < 0.2 &&
+              ball.userData.velocity.length() < 0.5
+            ) {
+              ball.userData.velocity.set(0, 0, 0);
+              ball.userData.spin.set(0, 0, 0);
+              ball.userData.isMoving = false;
+            }
+          }
+
+          // Additional manual rotation
+          const rotationSpeed = 8;
+          ball.rotation.x -= ball.userData.velocity.z * rotationSpeed * delta;
+          ball.rotation.z -= ball.userData.velocity.x * rotationSpeed * delta;
+
+          // Keep ball within pitch bounds
+          const BOUNDS_DAMPING = 0.7;
+          if (Math.abs(ball.position.x) > PITCH_WIDTH/2) {
+            ball.position.x = Math.sign(ball.position.x) * PITCH_WIDTH/2;
+            ball.userData.velocity.x *= -BOUNDS_DAMPING;
+          }
+
+          // Check if ball has stopped
+          if (ball.userData.velocity.length() < 0.1 && ball.position.y <= 0.15) {
+            setTimeout(() => {
+              resetBallAndPlayer();
+            }, 800);
+          }
+
+          // Check if ball went far behind the goal
+          if (ball.position.z > PITCH_LENGTH/2 + 5) {
+            setTimeout(() => {
+              resetBallAndPlayer();
+            }, 800);
+          }
+        }
+
+        // Update goalkeeper
+        updateGoalkeeper(delta);
+
+        // Check goalkeeper save
+        if (ball.userData.isMoving) {
+          checkGoalkeeperSave();
+        }
+
+        // *** Check collision with goal's back net ***
+        checkNetCollision();
+
+        composer.render();
+      }
+
+      // -----------------------------------
+      // Check collision with net (backNet)
+      // -----------------------------------
+      function checkNetCollision() {
+        if (!ball.userData.isMoving || !gameActive || ball.userData.goalScored) return;
+
+        const backNet = goal.userData.netMeshes.backNet;
+        const ballBox = new THREE.Box3().setFromObject(ball);
+        const netBox = new THREE.Box3().setFromObject(backNet);
+
+        if (ballBox.intersectsBox(netBox)) {
+          // It's a goal if we touch the back net
+          ball.userData.goalScored = true;
+          score++;
+          updateUI();
+          addGoalCelebrationEffect();
+
+          // Reset after a short delay
+          setTimeout(() => {
+            ball.userData.goalScored = false;
+            resetBallAndPlayer();
+          }, 800);
+        }
+      }
+
+      // -----------------------------------
+      // Reset ball and player
+      // -----------------------------------
+      function resetBallAndPlayer() {
+        if (!ball.userData.isResetting) {
+          ball.userData.isResetting = true;
+          ball.userData.goalScored = false;
+
+          new TWEEN.Tween(ball.material)
+            .to({ opacity: 0 }, 250)
+            .start();
+
+          setTimeout(() => {
+            // Reset positions
+            ball.position.set(0.3, 0.15, 0);
+            player.position.set(-0.3, 0.11, -0.5);
+            player.rotation.set(0, 0, 0); 
+
+            ball.userData.velocity.set(0, 0, 0);
+            ball.userData.spin.set(0, 0, 0);
+            ball.userData.isMoving = false;
+            ball.userData.isResetting = false;
+
+            if (drawnPathLine) {
+              scene.remove(drawnPathLine);
+              drawnPathLine = null;
+            }
+            if (trajectoryLine) {
+              scene.remove(trajectoryLine);
+              trajectoryLine = null;
+            }
+            shotPath = [];
+            isDrawing = false;
+            isDraggingBall = false;
+
+            // Reset goalkeeper
+            goalkeeper.userData.saveStarted = false;
+            goalkeeper.userData.isRecovering = false;
+            goalkeeper.userData.reactionDelayActive = false;
+            goalkeeper.userData.reactionDelayTimer = 0;
+            goalkeeper.position.copy(goalkeeper.userData.initialPosition);
+            goalkeeper.rotation.set(0, Math.PI, 0);
+
+            new TWEEN.Tween(ball.material)
+              .to({ opacity: 1 }, 250)
+              .start();
+          }, 250);
+        }
+      }
+
+      // -----------------------------------------
+      // Optional function to get ball trajectory
+      // -----------------------------------------
+      function getBallTrajectory(fullSteps = 100) {
+        const positions = [];
+        const simPos = ball.position.clone();
+        const simVel = ball.userData.velocity.clone();
+        const simSpin = ball.userData.spin.clone();
+
+        const dt = 0.02;
+        let steps = 0;
+
+        while (steps < fullSteps) {
+        }
+
+        if (ball.userData.velocity.z > 0) {
+          const timeToGoal = (PITCH_LENGTH/2 - ball.position.z) / ball.userData.velocity.z;
+          const predictedY = ball.position.y + ball.userData.velocity.y * timeToGoal 
+                              + 0.5 * ball.userData.gravity * timeToGoal * timeToGoal;
+          const predictedX = ball.position.x + ball.userData.velocity.x * timeToGoal;
+
+          if (predictedY < goalkeeper.userData.jumpHeight && timeToGoal > 0) {
+            goalkeeper.userData.saveStarted = true;
+            const targetX = THREE.MathUtils.clamp(
+              predictedX, 
+              -goalkeeper.userData.saveRadius * 2,
+              goalkeeper.userData.saveRadius * 2
+            );
+            const jumpHeight = Math.min(
+              goalkeeper.userData.jumpHeight,
+              predictedY + 0.3
+            );
+
+            goalkeeper.position.x = targetX;
+            goalkeeper.position.y = jumpHeight;
+            
+            const rotationAmount = targetX > 0 ? -0.5 : 0.5;
+            goalkeeper.rotation.z = rotationAmount;
+            goalkeeper.rotation.y = Math.PI + rotationAmount * 0.5;
+          }
+        }
+      }
+
+      function checkGoalkeeperSave() {
+        if (!ball.userData.isMoving || !goalkeeper.userData.saveStarted) return;
+
+        const gkBox = new THREE.Box3().setFromObject(goalkeeper);
+        const ballBox = new THREE.Box3().setFromObject(ball);
+
+        if (gkBox.intersectsBox(ballBox)) {
+          const ballVelocity = ball.userData.velocity.clone();
+          const speed = ballVelocity.length();
+          const relativeX = ball.position.x - goalkeeper.position.x;
+          const impactZone = Math.sign(relativeX);
+
+          const baseAngle = impactZone * Math.PI / 4;
+          const randomAngle = baseAngle + (Math.random() - 0.5) * Math.PI / 2;
+
+          const deflection = new THREE.Vector3(
+            Math.cos(randomAngle),
+            0.3 + Math.random() * 0.4,
+            -Math.abs(Math.sin(randomAngle))
+          ).normalize();
+
+          const deflectSpeed = speed * goalkeeper.userData.restitution 
+                               * (0.7 + Math.random() * 0.3);
+          ball.userData.velocity.copy(deflection.multiplyScalar(deflectSpeed));
+
+          const spinStrength = 2 + Math.random() * 2;
+          ball.userData.spin.set(
+            (Math.random() - 0.5) * spinStrength,
+            (Math.random() - 0.5) * spinStrength,
+            (Math.random() - 0.5) * spinStrength
+          );
+
+          addSaveImpactEffect(ball.position.clone());
+
+          goalkeeper.userData.isRecovering = true;
+          
+          setTimeout(() => {
+            resetBallAndPlayer();
+          }, 1000);
+        }
+      }
+
+      function recoverGoalkeeper() {
+        goalkeeper.position.set(
+          0, 
+          goalkeeper.userData.initialPosition.y, 
+          goalkeeper.userData.initialPosition.z
+        );
+        goalkeeper.rotation.set(0, Math.PI, 0);
+        goalkeeper.userData.saveStarted = false;
+        goalkeeper.userData.isRecovering = false;
+      }
+
+      function addSaveImpactEffect(position) {
+        const particleCount = 15;
+        const colors = [0xffffff, 0xcccccc, 0x999999];
+        
+        for (let i = 0; i < particleCount; i++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 4, 4),
+            new THREE.MeshBasicMaterial({
+              color: colors[Math.floor(Math.random() * colors.length)],
+              transparent: true,
+              opacity: 1
+            })
+          );
+          
+          particle.position.copy(position);
+          scene.add(particle);
+
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1 + Math.random() * 2;
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            Math.random() * 2,
+            Math.sin(angle) * speed
+          );
+
+          new TWEEN.Tween(particle.position)
+            .to({
+              x: particle.position.x + velocity.x,
+              y: particle.position.y + velocity.y,
+              z: particle.position.z + velocity.z
+            }, 600)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .start();
+
+          new TWEEN.Tween(particle.material)
+            .to({ opacity: 0 }, 600)
+            .onComplete(() => {
+              scene.remove(particle);
+            })
+            .start();
+
+          new TWEEN.Tween(particle.rotation)
+            .to({
+              x: Math.random() * Math.PI * 4,
+              y: Math.random() * Math.PI * 4,
+              z: Math.random() * Math.PI * 4
+            }, 600)
+            .start();
+        }
+      }
+
+      // Goal celebration effect
+      function addGoalCelebrationEffect() {
+        const particleCount = 30;
+        const colors = [0xffd700, 0xffffff, 0xff4444];
+        
+        for (let i = 0; i < particleCount; i++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 4, 4),
+            new THREE.MeshBasicMaterial({
+              color: colors[Math.floor(Math.random() * colors.length)],
+              transparent: true,
+              opacity: 1
+            })
+          );
+          
+          particle.position.set(
+            (Math.random() - 0.5) * 8,
+            Math.random() * 3,
+            PITCH_LENGTH/2
+          );
+          
+          scene.add(particle);
+
+          new TWEEN.Tween(particle.position)
+            .to({
+              x: particle.position.x + (Math.random() - 0.5) * 4,
+              y: particle.position.y + Math.random() * 2,
+              z: particle.position.z + (Math.random() - 0.5) * 2
+            }, 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .start();
+
+          new TWEEN.Tween(particle.material)
+            .to({ opacity: 0 }, 1000)
+            .onComplete(() => {
+              scene.remove(particle);
+            })
+            .start();
+
+          new TWEEN.Tween(particle.rotation)
+            .to({
+              x: Math.random() * Math.PI * 4,
+              y: Math.random() * Math.PI * 4,
+              z: Math.random() * Math.PI * 4
+            }, 1000)
+            .start();
+        }
+
+        // Flash effect on score display
+        const scoreText = document.getElementById('score-text');
+        scoreText.style.transform = 'scale(1.2)';
+        scoreText.style.transition = 'transform 0.2s';
+        setTimeout(() => {
+          scoreText.style.transform = 'scale(1)';
+        }, 200);
+      }
+
+      // Goalkeeper update function
+      function updateGoalkeeper(delta) {
+        if (!ball.userData.isMoving) return;
+
+        // Handle reaction delay
+        if (goalkeeper.userData.reactionDelayActive) {
+          goalkeeper.userData.reactionDelayTimer -= delta;
+          if (goalkeeper.userData.reactionDelayTimer <= 0) {
+            goalkeeper.userData.reactionDelayActive = false;
+          } else {
+            return; // Don't move until reaction delay is over
+          }
+        }
+
+        // If goalkeeper is recovering from a save, move back to starting position
+        if (goalkeeper.userData.isRecovering) {
+          const returnSpeed = delta * goalkeeper.userData.moveSpeed;
+          goalkeeper.position.lerp(goalkeeper.userData.initialPosition, returnSpeed);
+          goalkeeper.rotation.y = THREE.MathUtils.lerp(goalkeeper.rotation.y, Math.PI, returnSpeed);
+          goalkeeper.rotation.z = THREE.MathUtils.lerp(goalkeeper.rotation.z, 0, returnSpeed);
+
+          // Check if close enough to starting position
+          if (goalkeeper.position.distanceTo(goalkeeper.userData.initialPosition) < 0.1) {
+            recoverGoalkeeper();
+          }
+          return;
+        }
+
+        // If save hasn't started and ball is moving towards goal
+        if (!goalkeeper.userData.saveStarted && ball.userData.velocity.z > 0) {
+          const timeToGoal = (PITCH_LENGTH/2 - ball.position.z) / ball.userData.velocity.z;
+          const predictedY = ball.position.y + ball.userData.velocity.y * timeToGoal 
+                           + 0.5 * ball.userData.gravity * timeToGoal * timeToGoal;
+          const predictedX = ball.position.x + ball.userData.velocity.x * timeToGoal;
+
+          // Start save if ball is heading towards goal at saveable height
+          if (predictedY < goalkeeper.userData.jumpHeight && timeToGoal > 0) {
+            goalkeeper.userData.saveStarted = true;
+            const targetX = THREE.MathUtils.clamp(
+              predictedX, 
+              -goalkeeper.userData.saveRadius * 2,
+              goalkeeper.userData.saveRadius * 2
+            );
+            const jumpHeight = Math.min(
+              goalkeeper.userData.jumpHeight,
+              predictedY + 0.3
+            );
+
+            // Smooth movement to save position
+            new TWEEN.Tween(goalkeeper.position)
+              .to({ x: targetX, y: jumpHeight }, 200)
+              .easing(TWEEN.Easing.Quadratic.Out)
+              .start();
+
+            // Diving rotation
+            const rotationAmount = targetX > 0 ? -0.5 : 0.5;
+            new TWEEN.Tween(goalkeeper.rotation)
+              .to({ 
+                z: rotationAmount,
+                y: Math.PI + rotationAmount * 0.5
+              }, 200)
+              .easing(TWEEN.Easing.Quadratic.Out)
+              .start();
+          }
+        }
+      }
+
+      // -----------------------
+      // START
+      // -----------------------
+      init().then(() => {
+        animate();
+        startGame();
+      });
+    </script>
+  </body>
+</html>
